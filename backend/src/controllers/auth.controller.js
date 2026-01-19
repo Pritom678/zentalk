@@ -1,6 +1,9 @@
+import { sendWelcomeEmail } from "../emails/emailHandlers.js";
+import { ENV } from "../lib/env.js";
 import { generateToken } from "../lib/utils.js";
 import User from "../models/user.model.js";
 import bcrypt from "bcryptjs";
+
 
 export const signup = async (req, res) => {
   const { fullName, email, password } = req.body;
@@ -35,17 +38,30 @@ export const signup = async (req, res) => {
     });
 
     if (newUser) {
-      generateToken(newUser._id, res);
+      // generateToken(newUser._id, res);
 
-      await newUser.save();
+      // await newUser.save();
+
+      const savedUser = await newUser.save();
+      generateToken(savedUser._id, res);
 
       res.status(201).json({
-        _id: newUser._id,
-        fullName: newUser.fullName,
-        email: newUser.email,
-        profilePic: newUser.profilePic,
+        _id: savedUser._id,
+        fullName: savedUser.fullName,
+        email: savedUser.email,
+        profilePic: savedUser.profilePic,
       });
       //todo: send welcome email
+
+      try {
+        await sendWelcomeEmail(
+          savedUser.email,
+          savedUser.fullName,
+          ENV.CLIENT_URL || "http://localhost:3000",
+        );
+      } catch (err) {
+        console.error("Error sending welcome email:", err);
+      }
     } else {
       return res.status(400).send({ message: "User creation failed" });
     }
